@@ -2,11 +2,18 @@ package org.mcsoft.fcmservice.service.spi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.Notification;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.mcsoft.fcmservice.model.FcmMessage;
 import org.mcsoft.fcmservice.nimbusRestFactory.NimbusRestTemplateFactory;
 import org.mcsoft.fcmservice.service.FcmService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -14,7 +21,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.PostConstruct;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -25,12 +31,15 @@ import java.util.Objects;
 @Service
 public class FcmServiceImpl implements FcmService {
 
+    private static final String FCM_TOPIC = "mcsoft";
     private static final String FCM_PROJECT_ID = "homeauto-60384";
     private static final String MESSAGING_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
     private static final String[] SCOPES = {MESSAGING_SCOPE};
-    private static final String FCM_CREDENTIALS = "homeauto-60384-24ba8e25748c.json";
     private static final String FMC_URL = "https://fcm.googleapis.com/v1/projects/" + FCM_PROJECT_ID + "/messages:send";
     private final ObjectMapper objectMapper;
+
+    @Value("${google.fcm.key}")
+    private String fcmApiKey;
 
     private RestTemplate restTemplate;
     private NimbusRestTemplateFactory nimbusRestTemplateFactory;
@@ -41,44 +50,75 @@ public class FcmServiceImpl implements FcmService {
     }
 
     @PostConstruct
-    public void init() {
+    public void init() throws IOException {
         restTemplate = nimbusRestTemplateFactory.createRestTemplate(10000);
+
+        FirebaseOptions options = FirebaseOptions.builder()
+                .setCredentials(GoogleCredentials.fromStream(getResource(fcmApiKey))
+                        .createScoped(Arrays.asList(SCOPES)))
+                .setProjectId(FCM_PROJECT_ID)
+                .build();
+
+        FirebaseApp.initializeApp(options);
     }
 
     @Override
-    public void send(FcmMessage message) throws IOException {
+    public void send(FcmMessage fcmMessage) throws IOException {
 
-        HttpHeaders headers = setupPOSTHeaders();
+        log.info("send: fcmmessage: {},", fcmMessage);
 
-        headers.add("Authorization", "Bearer " + getAccessToken());
+        Message message = Message.builder()
+                .setTopic(FCM_TOPIC)
+                .setNotification(Notification.builder()
+                        .setTitle(fcmMessage.getNotification().getTitle())
+                        .setBody(fcmMessage.getNotification().getBody())
+                        .build())
+                .putAllData(fcmMessage.getData())
+                .build();
 
-        String notification = objectMapper.writeValueAsString(message);
-
-        log.info("send: message={}, headers={}, notification={}", message, headers, notification);
-
-        // String json = "{ \"to\": \"/topics/news\", \"notification\": { \"title\":\"CONTACT\", \"body\":
-        // \"Door opened\" }, }";
-
-        URI uri = UriComponentsBuilder.newInstance().fromUriString(FMC_URL).build().toUri();
-
-        InputStream content = new ByteArrayInputStream(notification.getBytes());
+        log.info("send: fcmmessage: {}, message: {},", fcmMessage, message);
 
         try {
-            ResponseEntity<String> responseEntity = sendPOST(uri,
-                    new HttpEntity<>(notification, headers), String.class, 15000);
+            String response = FirebaseMessaging.getInstance().send(message);
 
-            if (responseEntity.getBody() != null) {
-                log.info("response={}", responseEntity.getBody());
-            }
-        } catch (IOException e) {
-            log.error("send: error sending request", e);
+            log.info("response: {}", response);
+        } catch (FirebaseMessagingException e) {
+            log.warn("Error sending notification", e);
+            throw new RuntimeException(e);
         }
+
+//        HttpHeaders headers = setupPOSTHeaders();
+//
+//        headers.add("Authorization", "Bearer " + getAccessToken());
+//
+//        String notification = objectMapper.writeValueAsString(message);
+//
+//        log.info("send: fcmmessage: {}, message={}, headers={}, notification={}", fcmMessage, message, headers, notification);
+//
+//        // String json = "{ \"to\": \"/topics/news\", \"notification\": { \"title\":\"CONTACT\", \"body\":
+//        // \"Door opened\" }, }";
+//
+//        URI uri = UriComponentsBuilder.newInstance().fromUriString(FMC_URL).build().toUri();
+//
+//        InputStream content = new ByteArrayInputStream(notification.getBytes());
+//
+//        try {
+//            ResponseEntity<String> responseEntity = sendPOST(uri,
+//                    new HttpEntity<>(notification, headers), String.class, 15000);
+//
+//            if (responseEntity.getBody() != null) {
+//                log.info("response={}", responseEntity.getBody());
+//            }
+//        } catch (IOException e) {
+//            log.error("send: error sending request", e);
+//        }
     }
 
     private String getAccessToken() throws IOException {
-        GoogleCredentials googleCredentials = GoogleCredentials.fromStream(getResource(FCM_CREDENTIALS))
+        GoogleCredentials googleCredentials = GoogleCredentials.fromStream(getResource(fcmApiKey))
                 .createScoped(Arrays.asList(SCOPES));
         googleCredentials.refresh();
+
         return googleCredentials.getAccessToken().getTokenValue();
     }
 
@@ -100,7 +140,7 @@ public class FcmServiceImpl implements FcmService {
     }
 
     private <T> ResponseEntity<T> sendGET(URI uri, HttpEntity<?> httpEntity, Class<T> responseType,
-                                         int timeout) {
+                                          int timeout) {
 
         log.info("Sending GET request to URI={}", uri.toString());
 
@@ -108,7 +148,7 @@ public class FcmServiceImpl implements FcmService {
     }
 
     private <T> ResponseEntity<T> sendPOST(URI uri, HttpEntity<?> httpEntity, Class<T> responseType,
-                                          int timeout) throws IOException {
+                                           int timeout) throws IOException {
 
         log.info("Sending POST request to URI={}", uri.toString());
 
@@ -116,7 +156,7 @@ public class FcmServiceImpl implements FcmService {
     }
 
     private <T> ResponseEntity<T> sendPOST(URI uri, HttpEntity<?> httpEntity, ParameterizedTypeReference<T> responseType,
-                                          int timeout) {
+                                           int timeout) {
 
         log.info("Sending POST request to URI={}", uri.toString());
 

@@ -1,26 +1,30 @@
 package org.mcsoft.fcmservice.model;
 
 import lombok.Data;
+import lombok.ToString;
 
-//{
-//        "message": {
-//        "topic": "news",
-//        "notification": {
-//        "title": "Breaking News",
-//        "body": "New news story available."
-//        },
-//        "data": {
-//        "story_id": "story_12345"
-//        }
-//        }
-//}
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Data
+@ToString
 public class FcmMessage {
+    private static AtomicInteger messageId = new AtomicInteger(1);
 
-    private Message message;
+    private Notification notification;
+    private Map<String, String> data = new HashMap<>();
 
-    public FcmMessage(String topic, String title, String body) {
-        this.message = new Message(topic, new Notification(title, body));
+    public FcmMessage() {
+    }
+
+    public FcmMessage(String title, String text) {
+        this(null, new Notification(title, text));
+    }
+
+    public FcmMessage(String topic, Notification notification) {
+        this.notification = notification;
+
+        this.data.put("id", messageId.getAndIncrement() + "");
     }
 }

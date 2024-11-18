@@ -6,7 +6,6 @@ import org.mcsoft.fcmservice.service.FcmService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -23,7 +22,7 @@ public class PublicController {
     }
 
     @PostMapping(path = "/api/{version}/fcmService/send")
-    public void sendFcmMessage(@RequestBody FcmMessage message) throws IOException {
-        fcmService.send(message);
+    public void sendFcmMessage(@RequestBody FcmMessage fcmMessage) throws IOException {
+        fcmService.send(fcmMessage);
     }
 }

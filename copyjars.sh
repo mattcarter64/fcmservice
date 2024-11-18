@@ -1,12 +1,13 @@
 #!/bin/bash
 
-DEST="openhabian@10.87.1.125:~/"
+DEST="openhabian@10.87.1.125:~/fcmservice"
+JAR="fcmservice-0.0.1-SNAPSHOT.jar"
 
 #for binding in $BINDINGS
 #do
-	echo "- copying [$binding] binding jar to $DEST ..."
+	echo "- copying [$JAR] to $DEST ..."
 
-	jar="build/libs/fcmservice-0.0.1-SNAPSHOT.jar"
+	jar="build/libs/${JAR}"
 
 	if [ -f "$jar" ]
 	then
