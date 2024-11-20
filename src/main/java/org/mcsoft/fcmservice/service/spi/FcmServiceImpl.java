@@ -11,7 +11,7 @@ import com.google.firebase.messaging.Notification;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.mcsoft.fcmservice.model.FcmMessage;
-import org.mcsoft.fcmservice.nimbusRestFactory.NimbusRestTemplateFactory;
+import org.mcsoft.fcmservice.nimbusRestFactory.RestTemplateFactory;
 import org.mcsoft.fcmservice.service.FcmService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -42,16 +42,16 @@ public class FcmServiceImpl implements FcmService {
     private String fcmApiKey;
 
     private RestTemplate restTemplate;
-    private NimbusRestTemplateFactory nimbusRestTemplateFactory;
+    private RestTemplateFactory restTemplateFactory;
 
-    public FcmServiceImpl(NimbusRestTemplateFactory nimbusRestTemplateFactory, ObjectMapper objectMapper) {
-        this.nimbusRestTemplateFactory = nimbusRestTemplateFactory;
+    public FcmServiceImpl(RestTemplateFactory restTemplateFactory, ObjectMapper objectMapper) {
+        this.restTemplateFactory = restTemplateFactory;
         this.objectMapper = objectMapper;
     }
 
     @PostConstruct
     public void init() throws IOException {
-        restTemplate = nimbusRestTemplateFactory.createRestTemplate(10000);
+        restTemplate = restTemplateFactory.createRestTemplate(10000);
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(getResource(fcmApiKey))
@@ -63,11 +63,12 @@ public class FcmServiceImpl implements FcmService {
     }
 
     @Override
-    public void send(FcmMessage fcmMessage) throws IOException {
+    public String send(FcmMessage fcmMessage) throws IOException {
 
         log.info("send: fcmmessage: {},", fcmMessage);
 
         Message message = Message.builder()
+
                 .setTopic(FCM_TOPIC)
                 .setNotification(Notification.builder()
                         .setTitle(fcmMessage.getNotification().getTitle())
@@ -82,49 +83,26 @@ public class FcmServiceImpl implements FcmService {
             String response = FirebaseMessaging.getInstance().send(message);
 
             log.info("response: {}", response);
+
+            return response;
         } catch (FirebaseMessagingException e) {
             log.warn("Error sending notification", e);
             throw new RuntimeException(e);
         }
-
-//        HttpHeaders headers = setupPOSTHeaders();
-//
-//        headers.add("Authorization", "Bearer " + getAccessToken());
-//
-//        String notification = objectMapper.writeValueAsString(message);
-//
-//        log.info("send: fcmmessage: {}, message={}, headers={}, notification={}", fcmMessage, message, headers, notification);
-//
-//        // String json = "{ \"to\": \"/topics/news\", \"notification\": { \"title\":\"CONTACT\", \"body\":
-//        // \"Door opened\" }, }";
-//
-//        URI uri = UriComponentsBuilder.newInstance().fromUriString(FMC_URL).build().toUri();
-//
-//        InputStream content = new ByteArrayInputStream(notification.getBytes());
-//
-//        try {
-//            ResponseEntity<String> responseEntity = sendPOST(uri,
-//                    new HttpEntity<>(notification, headers), String.class, 15000);
-//
-//            if (responseEntity.getBody() != null) {
-//                log.info("response={}", responseEntity.getBody());
-//            }
-//        } catch (IOException e) {
-//            log.error("send: error sending request", e);
-//        }
     }
 
+    @SneakyThrows
+    private InputStream getResource(String resource) throws IOException {
+        return Objects.requireNonNull(getClass().getResource(resource)).openStream();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     private String getAccessToken() throws IOException {
         GoogleCredentials googleCredentials = GoogleCredentials.fromStream(getResource(fcmApiKey))
                 .createScoped(Arrays.asList(SCOPES));
         googleCredentials.refresh();
 
         return googleCredentials.getAccessToken().getTokenValue();
-    }
-
-    @SneakyThrows
-    private InputStream getResource(String resource) throws IOException {
-        return Objects.requireNonNull(getClass().getResource(resource)).openStream();
     }
 
     private HttpHeaders setupPOSTHeaders() {

@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.3.5'
@@ -38,6 +40,9 @@ dependencies {
 //    implementation 'org.springframework:spring-web:4.3.8.RELEASE'
 
     compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+//    implementation 'org.slf4j:slf4j-api:1.7.32'
+//    implementation 'ch.qos.logback:logback-classic:1.4.14'
 
     implementation 'org.apache.commons:commons-lang3:3.17.0'
 //    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
@@ -48,7 +53,6 @@ dependencies {
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.integration:spring-integration-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -62,4 +66,18 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+bootRun {
+    doFirst {
+        throw new GradleException("Use 'local' BootRun Tasks")
+    }
+}
+
+tasks.register('local', BootRun) {
+
+    mainClass = bootRun.mainClass
+    classpath = bootRun.classpath
+    systemProperty "", "CONSOLE"
+    jvmArgs = ["-Xdebug",]
 }

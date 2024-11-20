@@ -22,7 +22,7 @@ public class PublicController {
     }
 
     @PostMapping(path = "/api/{version}/fcmService/send")
-    public void sendFcmMessage(@RequestBody FcmMessage fcmMessage) throws IOException {
-        fcmService.send(fcmMessage);
+    public String sendFcmMessage(@RequestBody FcmMessage fcmMessage) throws IOException {
+        return fcmService.send(fcmMessage);
     }
 }

@@ -6,5 +6,5 @@ import java.io.IOException;
 
 public interface FcmService {
 
-    void send(FcmMessage fcmMessage) throws IOException;
+    String send(FcmMessage fcmMessage) throws IOException;
 }
