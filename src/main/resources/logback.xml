@@ -1,0 +1,59 @@
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!--            <Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Pattern>-->
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5.5p] [%c] %t - %m%n</Pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/var/log/fcmservice/fcmservice.log</file>
+        <append>true</append>
+        <!--        <immediateFlush>true</immediateFlush>-->
+        <!--        <prudent>true</prudent>-->
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>/var/log/fcmservice/fcmservice.%i.log.zip</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>10</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>5MB</maxFileSize>
+        </triggeringPolicy>
+
+        <encoder>
+            <!--            <Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Pattern>-->
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5.5p] [%c] %t - %m%n</Pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="local">
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="pi">
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <logger name="org" additivity="false">
+        <level value="ERROR"/>
+        <appender-ref ref="${LOGBACK_APPENDER:-CONSOLE}"/>
+    </logger>
+    <logger name="org.mcsoft" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="${LOGBACK_APPENDER:-CONSOLE}"/>
+    </logger>
+    <logger name="org.springframework.web" level="DEBUG"/>
+
+    <root level="INFO">
+        <appender-ref ref="${LOGBACK_APPENDER:-CONSOLE}"/>
+    </root>
+
+</configuration>
